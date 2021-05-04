@@ -9,6 +9,7 @@ import SwiftUI
 
 @main
 struct IOSGameHw04App: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     var body: some Scene {
         WindowGroup {
             ContentView()
