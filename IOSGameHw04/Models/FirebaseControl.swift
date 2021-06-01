@@ -113,8 +113,52 @@ class FireBase{
     func createUserData(ud: UserData, uid: String, completion: @escaping((Result<String, NormalErr>) -> Void)) {
         let db = Firestore.firestore()
         do {
-            try db.collection("Users_Data").document(uid).setData(from: ud)
+            try db.collection("users_data").document(uid).setData(from: ud)
             completion(.success("建立資料成功"))
+        } catch {
+            completion(.failure(NormalErr.error))
+            print(error)
+        }
+    }
+    
+    //創建房間
+    func createRoom(ud: [UserData], rid_str: String, completion: @escaping((Result<String, NormalErr>) -> Void)) {
+        let db = Firestore.firestore()
+        do {
+            let rid = [Int.random(in: 0...9), Int.random(in: 0...9), Int.random(in: 0...9), Int.random(in: 0...9)]
+            //創建房間
+            if rid_str == "-1" {
+                try db.collection("game_room").document(String(rid[0]) + String(rid[1]) + String(rid[2]) + String(rid[3])).setData(from: RoomData(id: "", user0: ud[0], user0ready: false, user1: ud[1], user1ready: false, startPlayer: 0))
+                completion(.success(String(rid[0]) + String(rid[1]) + String(rid[2]) + String(rid[3])))
+            }
+            //加入房間
+            else {
+                let user1: [String: Any] = [
+                    "userBD": ud[0].userBD,
+                    "userCountry": ud[0].userCountry,
+                    "userFirstLogin": ud[0].userFirstLogin,
+                    "userGender": ud[0].userGender,
+                    "userName": ud[0].userName,
+                    "userPhotoURL": ud[0].userPhotoURL
+                ]
+                try db.collection("game_room").document(rid_str).setData(["user1": user1], merge: true)
+                completion(.success(rid_str))
+            }
+            
+            
+        } catch {
+            completion(.failure(NormalErr.error))
+            print(error)
+        }
+    }
+    
+    //開啟遊戲
+    func createGame(rd: RoomData, startPlayer: Int, completion: @escaping((Result<String, NormalErr>) -> Void)) {
+        let db = Firestore.firestore()
+        do {
+            try db.collection("gaming_room").document(rd.id!).setData(from: GameData(roomData: rd, nowPlayer: startPlayer, user0Skipped: false, user1Skipped: false))
+            print("由Player " + String(startPlayer) + " 開始")
+            completion(.success(rd.id!))
         } catch {
             completion(.failure(NormalErr.error))
             print(error)
@@ -134,10 +178,21 @@ class FireBase{
         })
     }
     
+    func setDBUserName(userID: String, userName: String, completion: @escaping((Result<String, NormalErr>) -> Void)){
+        let db = Firestore.firestore()
+        do {
+            try db.collection("users_data").document(userID).setData(["userName": userName], merge: true)
+            completion(.success("set db's userName."))
+        } catch {
+            completion(.failure(NormalErr.error))
+            print(error)
+        }
+    }
+    
     //讀取某個collection下全部的 documents
     func fetchUsers (completion: @escaping((Result<[UserData], NormalErr>) -> Void)) {
         let db = Firestore.firestore()
-        db.collection("Users_Data").getDocuments { snapshot, error in
+        db.collection("users_data").getDocuments { snapshot, error in
             guard let snapshot = snapshot else { return }
             let users = snapshot.documents.compactMap { snapshot in
                 try? snapshot.data(as: UserData.self)
@@ -150,6 +205,27 @@ class FireBase{
             }
         }
     }
+    
+    //讀取某個collection下全部的 documents
+    func fetchRooms (completion: @escaping((Result<[RoomData], NormalErr>) -> Void)) {
+        let db = Firestore.firestore()
+        db.collection("game_room").getDocuments { snapshot, error in
+            guard let snapshot = snapshot else { return }
+            let rooms = snapshot.documents.compactMap { snapshot in
+                try? snapshot.data(as: RoomData.self)
+                
+            }
+            //print(users)
+            completion(.success(rooms))
+            if error?.localizedDescription != nil {
+                completion(.failure(NormalErr.error))
+            }
+        }
+    }
+    
+    
+    
+    
 }
 
 enum RegError: Error {
@@ -171,6 +247,8 @@ enum NormalErr: Error {
 
 struct UserData: Codable, Identifiable {
     @DocumentID var id: String?
+    let userName: String
+    let userPhotoURL: String
     let userGender: String
     let userBD: String
     let userFirstLogin: String

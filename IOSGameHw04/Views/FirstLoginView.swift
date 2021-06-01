@@ -11,7 +11,7 @@ import FirebaseAuth
 
 struct FirstLoginView: View {
     
-    @State private var currentUser = Auth.auth().currentUser
+    @StateObject var myUserData = MyUserData()
     @State private var userDisplayName = ""
     @State private var userGender = ""
     @State private var userFirstLoginStr = ""
@@ -19,7 +19,6 @@ struct FirstLoginView: View {
     @State private var currentDate = Date()
     @State private var genderSelect = 0
     @State private var userCountrySelect = 0
-    //@State private var bodyColorSelect = 0
     @State private var faceSelect = 0
     @State private var hairSelect = 0
     @State private var overAllSelect = 0
@@ -175,19 +174,8 @@ struct FirstLoginView: View {
                                 showAlert = true
                             }
                             else{
+                                uploadDollPhoto()
                                 FireBase.shared.setUserDisplayName(userDisplayName: userDisplayName)
-                                let newUser = UserData(userGender: gender[genderSelect], userBD: myDateFormatter.string(from: userBD), userFirstLogin: userFirstLoginStr, userCountry: countries[userCountrySelect])
-                                FireBase.shared.createUserData(ud: newUser, uid: currentUser!.uid) {
-                                    (result) in
-                                    switch result {
-                                    case .success(let sucmsg):
-                                        print(sucmsg)
-                                        uploadDollPhoto()
-                                    case .failure(_):
-                                        print("上傳錯誤")
-                                        showAlertMsg(msg: "發生不明錯誤，請重新嘗試")
-                                    }
-                                }
                             }
                         }){
                             HStack{
@@ -211,7 +199,7 @@ struct FirstLoginView: View {
                             return self.myAlert
                         }
                     }
-                }
+                }.font(.system(size: 18))
             }
             .background(
                 Image("bg")
@@ -265,18 +253,19 @@ struct FirstLoginView: View {
                     switch result {
                     case .success(let msg):
                         print(msg)
-                        FireBase.shared.userSingOut()
-//                        FireBase.shared.userSingIn(userEmail: userEmail, pw: userPW) {
-//                            result in
-//                            switch result {
-//                            case .success(_):
-//                                print("成功第二次登入")
-//                                FireBase.shared.userSingOut()
-//                            case .failure(_):
-//                                print("第二次登入失敗")
-//                            }
-//                        }
-                        showAlertMsg(msg: "設置基本資料成功")
+                        let newUser = UserData(userName: userDisplayName, userPhotoURL: url.absoluteString, userGender: gender[genderSelect], userBD: myDateFormatter.string(from: userBD), userFirstLogin: userFirstLoginStr, userCountry: countries[userCountrySelect])
+                        FireBase.shared.createUserData(ud: newUser, uid: myUserData.currentUser!.uid) {
+                            (result) in
+                            switch result {
+                            case .success(let sucmsg):
+                                print(sucmsg)
+                                FireBase.shared.userSingOut()
+                                showAlertMsg(msg: "設置基本資料成功")
+                            case .failure(_):
+                                print("上傳錯誤")
+                                showAlertMsg(msg: "發生不明錯誤，請重新嘗試")
+                            }
+                        }
                     case .failure(_):
                         print("設置頭像錯誤")
                     }

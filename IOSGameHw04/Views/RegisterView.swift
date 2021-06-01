@@ -155,6 +155,7 @@ struct RegisterView: View {
     private func endEditing() {
         UIApplication.shared.endEditing()
     }
+ 
 }
 
 struct RegisterView_Previews: PreviewProvider {
@@ -164,14 +165,14 @@ struct RegisterView_Previews: PreviewProvider {
 }
 
 //fix the navigationLink back button gesture
-extension UINavigationController: UIGestureRecognizerDelegate {
-    
-    override open func viewDidLoad() {
-            super.viewDidLoad()
-        interactivePopGestureRecognizer?.delegate = self
-    }
-
-    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        return viewControllers.count > 1
-    }
-}
+//    extension UINavigationController: UIGestureRecognizerDelegate {
+//
+//        override open func viewDidLoad() {
+//                super.viewDidLoad()
+//            interactivePopGestureRecognizer?.delegate = self
+//        }
+//
+//        public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+//            return viewControllers.count > 1
+//        }
+//}
