@@ -6,8 +6,8 @@
 //
 
 import SwiftUI
-import AVFoundation
 import FirebaseAuth
+import AVFoundation
 
 struct ContentView: View {
     
@@ -21,6 +21,8 @@ struct ContentView: View {
     @State private var showAlert = false
     @State private var showView = false
     @State private var returnBool = false
+    @State private var showProgressView = false
+    @State private var firstIntoView = true
     @State var looper: AVPlayerLooper?
     
     var body: some View {
@@ -32,9 +34,7 @@ struct ContentView: View {
                     .frame(width: 300)
                 HStack{
                     Image("content_m")
-                    Text("翻轉").font(.custom("SanafonMaru", size: 50))
-                        .foregroundColor(titleColor) + Text("黑").font(.custom("SanafonMaru", size: 50))
-                        .foregroundColor(.black) + Text("白棋").font(.custom("SanafonMaru", size: 50))
+                    Text("翻轉黑白棋").font(.custom("SanafonMaru", size: 50))
                         .foregroundColor(titleColor)
                     Image("content_f")
                         .offset(y: 5.2)
@@ -51,23 +51,31 @@ struct ContentView: View {
                     )
                 }.offset(y:-40)
                 HStack{
+                    Spacer()
                     Button(action:{userLoginAction()}){
                         ButtonView(buttonText: "登入")
                     }
                     .padding(5)
-                    if returnBool {
-                        EmptyView().fullScreenCover(isPresented: $showView)
-                            { UserView()}
+                    if showProgressView {
+                        EmptyView().fullScreenCover(isPresented: $showProgressView)
+                        { LoginProgressView()}
+                    } else {
+                        if returnBool {
+                            EmptyView().fullScreenCover(isPresented: $showView)
+                                { UserView()}
+                        }
+                        else {
+                            EmptyView().fullScreenCover(isPresented: $showView)
+                                { FirstLoginView(userEmail: userEmail, userPW: userPW) }
+                        }
                     }
-                    else {
-                        EmptyView().fullScreenCover(isPresented: $showView)
-                            { FirstLoginView(userEmail: userEmail, userPW: userPW) }
-                    }
+                    Spacer()
                     NavigationLink(
                         destination: RegisterView()){
                         ButtonView(buttonText: "註冊")
                     }
                     .padding(5)
+                    Spacer()
                 }.padding(.top, 5)
                 Spacer()
             }.offset(y: -20)
@@ -94,11 +102,16 @@ struct ContentView: View {
                     .contrast(0.8)
             )
             .onAppear{
+                self.returnBool = false
                 self.playMusic()
                 for code in NSLocale.isoCountryCodes as [String] {
                     let id = NSLocale.localeIdentifier(fromComponents: [NSLocale.Key.countryCode.rawValue: code])
                     let name = NSLocale(localeIdentifier: "zh_TW").displayName(forKey: NSLocale.Key.identifier, value: id) ?? "Country not found for code: \(code)"
                     countries.append(name)
+                }
+                if Auth.auth().currentUser != nil {
+                    self.showProgressView = true
+                    userLoggedIn()
                 }
             }
             .foregroundColor(.primary)
@@ -109,7 +122,7 @@ struct ContentView: View {
     }
     
     private func userLoginAction() {
-        FireBase.shared.userSingIn(userEmail: userEmail, pw: userPW){
+        FireBase.shared.userSignIn(userEmail: userEmail, pw: userPW){
             (result) in
             switch result {
             case .success( _):
@@ -153,12 +166,38 @@ struct ContentView: View {
         }
     }
     
+    private func userLoggedIn() {
+        FireBase.shared.fetchUsers(){
+            (result) in
+            switch result {
+            case .success(let udArray):
+                print("使用者資料抓取成功")
+                for u in udArray {
+                    if u.id == Auth.auth().currentUser?.uid {
+                        returnBool = true
+                        print("我有進來")
+                    }
+                }
+                showProgressView = false
+                showView = true
+                
+            case .failure(_):
+                print("使用者資料抓取失敗")
+                showProgressView = false
+                returnBool = false
+            }
+        }
+    }
+
     private func playMusic() {
-        let fileUrl = Bundle.main.url(forResource: "bgm", withExtension: "mp3")!
-        let item = AVPlayerItem(url: fileUrl)
-        self.looper = AVPlayerLooper(player: myPlayer, templateItem: item)
-        myPlayer.volume = 0.1
-        myPlayer.play()
+        if firstIntoView {
+            self.looper = AVPlayerLooper(player: myPlayer, templateItem: item)
+            myPlayer.volume = UserDefaults.standard.object(forKey: "myPlayerVol") as? Float ?? 0.1
+            if UserDefaults.standard.object(forKey: "myPlayerStatus") as? Bool ?? true {
+                myPlayer.play()
+            }
+            firstIntoView = false
+        }
     }
     
     private func endEditing() {

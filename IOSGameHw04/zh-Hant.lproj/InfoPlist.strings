@@ -1,0 +1,6 @@
+/* Bundle name */
+"CFBundleName" = "翻轉黑白棋";
+
+"CFBundleDisplayName" = "翻轉黑白棋";
+
+"NSUserTrackingUsageDescription" = "您的數據將用於向您投放個性化廣告";

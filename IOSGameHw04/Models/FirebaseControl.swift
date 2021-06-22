@@ -39,7 +39,7 @@ class FireBase{
     }
 
     //帳密登入
-    func userSingIn(userEmail: String, pw: String, completion: @escaping((Result<String, LoginError>) -> Void)) {
+    func userSignIn(userEmail: String, pw: String, completion: @escaping((Result<String, LoginError>) -> Void)) {
         Auth.auth().signIn(withEmail: userEmail, password: pw) { result, error in
              guard error == nil else {
                 print(error?.localizedDescription)
@@ -121,14 +121,26 @@ class FireBase{
         }
     }
     
+    //修改user密碼
+    func setUserPassword(pw: String, completion: @escaping((Result<String, NormalErr>) -> Void)) {
+        Auth.auth().currentUser?.updatePassword(to: pw) { error in
+            guard error == nil else {
+                print(error?.localizedDescription)
+                completion(.failure(NormalErr.error))
+                return
+            }
+            completion(.success("修改密碼成功"))
+        }
+    }
+    
     //創建房間
-    func createRoom(ud: [UserData], rid_str: String, completion: @escaping((Result<String, NormalErr>) -> Void)) {
+    func createRoom(ud: [UserData], rP: String, rid_str: String, completion: @escaping((Result<String, NormalErr>) -> Void)) {
         let db = Firestore.firestore()
         do {
             let rid = [Int.random(in: 0...9), Int.random(in: 0...9), Int.random(in: 0...9), Int.random(in: 0...9)]
             //創建房間
             if rid_str == "-1" {
-                try db.collection("game_room").document(String(rid[0]) + String(rid[1]) + String(rid[2]) + String(rid[3])).setData(from: RoomData(id: "", user0: ud[0], user0ready: false, user1: ud[1], user1ready: false, startPlayer: 0))
+                try db.collection("game_room").document(String(rid[0]) + String(rid[1]) + String(rid[2]) + String(rid[3])).setData(from: RoomData(id: "", user0: ud[0], user0ready: false, user1: ud[1], user1ready: false, roundTime: 0, roomPassWord: rP, startPlayer: 0, roomGameStatus: false))
                 completion(.success(String(rid[0]) + String(rid[1]) + String(rid[2]) + String(rid[3])))
             }
             //加入房間
@@ -138,10 +150,14 @@ class FireBase{
                     "userCountry": ud[0].userCountry,
                     "userFirstLogin": ud[0].userFirstLogin,
                     "userGender": ud[0].userGender,
+                    "userID": ud[0].userID ?? "error",
+                    "userLose": ud[0].userLose,
+                    "userMoney": ud[0].userMoney,
                     "userName": ud[0].userName,
-                    "userPhotoURL": ud[0].userPhotoURL
+                    "userPhotoURL": ud[0].userPhotoURL,
+                    "userWin": ud[0].userWin
                 ]
-                try db.collection("game_room").document(rid_str).setData(["user1": user1], merge: true)
+                db.collection("game_room").document(rid_str).setData(["user1": user1], merge: true)
                 completion(.success(rid_str))
             }
             
@@ -181,7 +197,7 @@ class FireBase{
     func setDBUserName(userID: String, userName: String, completion: @escaping((Result<String, NormalErr>) -> Void)){
         let db = Firestore.firestore()
         do {
-            try db.collection("users_data").document(userID).setData(["userName": userName], merge: true)
+            db.collection("users_data").document(userID).setData(["userName": userName], merge: true)
             completion(.success("set db's userName."))
         } catch {
             completion(.failure(NormalErr.error))
@@ -221,11 +237,7 @@ class FireBase{
                 completion(.failure(NormalErr.error))
             }
         }
-    }
-    
-    
-    
-    
+    }  
 }
 
 enum RegError: Error {
@@ -243,16 +255,6 @@ enum LoginError: Error {
 
 enum NormalErr: Error {
     case error
-}
-
-struct UserData: Codable, Identifiable {
-    @DocumentID var id: String?
-    let userName: String
-    let userPhotoURL: String
-    let userGender: String
-    let userBD: String
-    let userFirstLogin: String
-    let userCountry: String
 }
 
 //儲存所有國家 array

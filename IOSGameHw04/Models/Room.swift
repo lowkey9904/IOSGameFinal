@@ -18,7 +18,7 @@ class MyRoom: ObservableObject {
     let secondPlayerInto = NotificationCenter.default.publisher(for: Notification.Name("secPlayerInto"))
     let db = Firestore.firestore()
     init() {
-        self.roomData = RoomData(id: "", user0: UserData(id: "", userName: "", userPhotoURL: "", userGender: "", userBD: "", userFirstLogin: "", userCountry: ""), user0ready: false, user1: UserData(id: "", userName: "", userPhotoURL: "", userGender: "", userBD: "", userFirstLogin: "", userCountry: ""), user1ready: false, startPlayer: 0)
+        self.roomData = RoomData(id: "", user0: UserData(id: "", userID: "", userName: "", userPhotoURL: "", userGender: "", userBD: "", userFirstLogin: "", userCountry: ""), user0ready: false, user1: UserData(id: "", userID: "", userName: "", userPhotoURL: "", userGender: "", userBD: "", userFirstLogin: "", userCountry: ""), user1ready: false, roundTime: 0, roomPassWord: "", startPlayer: 0, roomGameStatus: false)
     }
     func copyRoom(newRoom: RoomData) -> Void {
         self.roomData = newRoom
@@ -61,6 +61,7 @@ class MyRoom: ObservableObject {
             print("2號玩家準備完畢")
         }
     }
+    
     func cancelReady(userNum: Int) -> Void {
         if userNum == 0 {
             print("1號玩家取消準備")
@@ -71,6 +72,10 @@ class MyRoom: ObservableObject {
             self.db.collection("game_room").document(self.roomData.id ?? "").setData(["user1ready": false], merge: true)
             print("2號玩家取消準備")
         }
+    }
+    
+    func setRoomGameStatus(status: Bool) -> Void {
+        self.db.collection("game_room").document(self.roomData.id ?? "").setData(["roomGameStatus": status], merge: true)
     }
     
     func delRoom() -> Void {
@@ -89,22 +94,28 @@ class MyRoom: ObservableObject {
             "userCountry": "",
             "userFirstLogin": "",
             "userGender": "",
+            "userID": "",
+            "userLose": 0,
             "userName": "",
-            "userPhotoURL": ""
+            "userPhotoURL": "",
+            "userWin": 0
         ]
         let newHost: [String: Any] = [
             "userBD": self.roomData.user1.userBD,
             "userCountry": self.roomData.user1.userCountry,
             "userFirstLogin": self.roomData.user1.userFirstLogin,
             "userGender": self.roomData.user1.userGender,
+            "userID": self.roomData.user1.userID ?? "",
+            "userLose": self.roomData.user1.userLose,
             "userName": self.roomData.user1.userName,
-            "userPhotoURL": self.roomData.user1.userPhotoURL
+            "userPhotoURL": self.roomData.user1.userPhotoURL,
+            "userWin": self.roomData.user1.userWin
         ]
         if userNum == 0 {
-            try db.collection("game_room").document(self.roomData.id ?? "").setData(["user0": newHost], merge: true)
-            try db.collection("game_room").document(self.roomData.id ?? "").setData(["user1": userNull], merge: true)
+            self.db.collection("game_room").document(self.roomData.id ?? "").setData(["user0": newHost], merge: true)
+            self.db.collection("game_room").document(self.roomData.id ?? "").setData(["user1": userNull], merge: true)
         } else if userNum == 1 {
-            try db.collection("game_room").document(self.roomData.id ?? "").setData(["user1": userNull], merge: true)
+            self.db.collection("game_room").document(self.roomData.id ?? "").setData(["user1": userNull], merge: true)
         }
     }
     
@@ -119,7 +130,7 @@ class MyRoomList: ObservableObject {
     private var listener: ListenerRegistration?
     let db = Firestore.firestore()
     init() {
-        roomList = [RoomData(id: "", user0: UserData(id: "", userName: "", userPhotoURL: "", userGender: "", userBD: "", userFirstLogin: "", userCountry: ""), user0ready: false, user1: UserData(id: "", userName: "", userPhotoURL: "", userGender: "", userBD: "", userFirstLogin: "", userCountry: ""), user1ready: false, startPlayer: 0)]
+        roomList = [RoomData(id: "", user0: UserData(id: "", userID: "", userName: "", userPhotoURL: "", userGender: "", userBD: "", userFirstLogin: "", userCountry: ""), user0ready: false, user1: UserData(id: "", userID: "", userName: "", userPhotoURL: "", userGender: "", userBD: "", userFirstLogin: "", userCountry: ""), user1ready: false, roundTime: 0, roomPassWord: "", startPlayer: 0, roomGameStatus: false)]
     }
     
     func updateRoomList() -> Void {
@@ -137,9 +148,12 @@ class MyRoomList: ObservableObject {
 
 struct RoomData: Codable, Identifiable {
     @DocumentID var id: String?
-    let user0: UserData
+    var user0: UserData
     var user0ready: Bool
-    let user1: UserData
+    var user1: UserData
     var user1ready: Bool
+    var roundTime: Int
+    var roomPassWord: String
     var startPlayer: Int
+    var roomGameStatus: Bool
 }

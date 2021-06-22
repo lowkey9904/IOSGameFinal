@@ -4,7 +4,7 @@
 //
 //  Created by Joker on 2021/5/30.
 //
-
+import SwiftUI
 import Foundation
 import FirebaseFirestoreSwift
 import FirebaseFirestore
@@ -16,9 +16,12 @@ class MyGame: ObservableObject {
     let changePlayer = NotificationCenter.default.publisher(for: Notification.Name("changePlayer"))
     let skipP0 = NotificationCenter.default.publisher(for: Notification.Name("skipP0"))
     let skipP1 = NotificationCenter.default.publisher(for: Notification.Name("skipP1"))
+    let gameNormal = NotificationCenter.default.publisher(for: Notification.Name("gn"))
+    let giveupP0 = NotificationCenter.default.publisher(for: Notification.Name("giveupP0"))
+    let giveupP1 = NotificationCenter.default.publisher(for: Notification.Name("giveupP1"))
     let gameOver = NotificationCenter.default.publisher(for: Notification.Name("gameOver"))
     init() {
-        self.myGameData = GameData(roomData: RoomData(id: "", user0: UserData(id: "", userName: "", userPhotoURL: "", userGender: "", userBD: "", userFirstLogin: "", userCountry: ""), user0ready: false, user1: UserData(id: "", userName: "", userPhotoURL: "", userGender: "", userBD: "", userFirstLogin: "", userCountry: ""), user1ready: false, startPlayer: 0), nowPlayer: 0, user0Skipped: false, user1Skipped: false)
+        self.myGameData = GameData(roomData: RoomData(id: "", user0: UserData(id: "", userID: "", userName: "", userPhotoURL: "", userGender: "", userBD: "", userFirstLogin: "", userCountry: ""), user0ready: false, user1: UserData(id: "", userID: "", userName: "", userPhotoURL: "", userGender: "", userBD: "", userFirstLogin: "", userCountry: ""), user1ready: false, roundTime: 0, roomPassWord: "", startPlayer: 0, roomGameStatus: false), nowPlayer: 0)
     }
     
     func copyGame(newGame: GameData) -> Void {
@@ -31,10 +34,29 @@ class MyGame: ObservableObject {
             snapshot, error in
             guard let snapshot = snapshot else { return }
             guard let game = try? snapshot.data(as: GameData.self) else { return }
+//            if(self.myGameData.nowPlayer != game.nowPlayer) {
+//                NotificationCenter.default.post(name: Notification.Name("changePlayer"), object: nil)
+//            }
             self.copyGame(newGame: game)
             print("Game data update!")
-            if(self.myGameData.nowPlayer != game.nowPlayer) {
-                NotificationCenter.default.post(name: Notification.Name("changePlayer"), object: nil)
+            
+            //SKIPPED
+            if(self.myGameData.user0Skipped) {
+                NotificationCenter.default.post(name: Notification.Name("skipP0"), object: nil)
+            }
+            if(self.myGameData.user1Skipped) {
+                NotificationCenter.default.post(name: Notification.Name("skipP1"), object: nil)
+            }
+            if(self.myGameData.user0GiveUp == false && self.myGameData.user1Skipped == false) {
+                NotificationCenter.default.post(name: Notification.Name("gn"), object: nil)
+            }
+            
+            //GIVEUP
+            if(self.myGameData.user0GiveUp) {
+                NotificationCenter.default.post(name: Notification.Name("giveupP0"), object: nil)
+            }
+            if(self.myGameData.user1GiveUp) {
+                NotificationCenter.default.post(name: Notification.Name("giveupP1"), object: nil)
             }
             
             //SKIP & GAME OVER RULE
@@ -61,13 +83,40 @@ class MyGame: ObservableObject {
             
     }
     
+    func setGiveUp(user: Int) -> Void {
+        self.db.collection("gaming_room").document(self.myGameData.roomData.id ?? "").setData(["user" + String(user) + "GiveUp": true], merge: true)
+    }
+    
     func setisFinal(status: Bool, user: Int) -> Void {
+        self.db.collection("gaming_room").document(self.myGameData.roomData.id ?? "").setData(["user" + String(user) + "Skipped": status], merge: true)
+    }
+    
+    //input userNum is winner
+    //計算勝率＆計算金幣加減(Winner+50 Loser-50)
+    func countWinandLose(user: Int) -> Void {
+        print("Count")
+        print(self.myGameData.roomData.user0.userID ?? "")
+        print(self.myGameData.roomData.user1.userID ?? "")
         if user == 0 {
-            self.db.collection("gaming_room").document(self.myGameData.roomData.id ?? "").setData(["user0Skipped": status], merge: true)
-        } else if user == 1 {
-            self.db.collection("gaming_room").document(self.myGameData.roomData.id ?? "").setData(["user1Skipped": status], merge: true)
+            //print(self.myGameData.roomData.user0.userWin, self.myGameData.roomData.user1.userWin)
+            self.myGameData.roomData.user0.userWin += 1
+            self.myGameData.roomData.user1.userLose += 1
+            self.myGameData.roomData.user0.userMoney += 50
+            self.myGameData.roomData.user1.userMoney -= 50
+            self.db.collection("users_data").document(self.myGameData.roomData.user0.userID ?? "").setData(["userWin": self.myGameData.roomData.user0.userWin], merge: true)
+            self.db.collection("users_data").document(self.myGameData.roomData.user1.userID ?? "").setData(["userLose": self.myGameData.roomData.user1.userLose], merge: true)
+            self.db.collection("users_data").document(self.myGameData.roomData.user0.userID ?? "").setData(["userMoney": self.myGameData.roomData.user0.userMoney], merge: true)
+            self.db.collection("users_data").document(self.myGameData.roomData.user1.userID ?? "").setData(["userMoney": self.myGameData.roomData.user1.userMoney], merge: true)
+        } else {
+            self.myGameData.roomData.user0.userLose += 1
+            self.myGameData.roomData.user1.userWin += 1
+            self.myGameData.roomData.user0.userMoney -= 50
+            self.myGameData.roomData.user1.userMoney += 50
+            self.db.collection("users_data").document(self.myGameData.roomData.user0.userID ?? "").setData(["userLose": self.myGameData.roomData.user0.userLose], merge: true)
+            self.db.collection("users_data").document(self.myGameData.roomData.user1.userID ?? "").setData(["userWin": self.myGameData.roomData.user1.userWin], merge: true)
+            self.db.collection("users_data").document(self.myGameData.roomData.user0.userID ?? "").setData(["userMoney": self.myGameData.roomData.user0.userMoney], merge: true)
+            self.db.collection("users_data").document(self.myGameData.roomData.user1.userID ?? "").setData(["userMoney": self.myGameData.roomData.user1.userMoney], merge: true)
         }
-        
     }
     
     func removeGameListener() -> Void {
@@ -101,8 +150,15 @@ class MyGame: ObservableObject {
         if isSkip == false {
             self.myGameData.checkerboard[String(index1)]![index2] = playerPieceNum
         }
-        self.checkCB(index1: index1, index2: index2, playerPieceNum: playerPieceNum, isSkip: isSkip)
-        self.db.collection("gaming_room").document(self.myGameData.roomData.id ?? "").setData(["checkerboard":self.myGameData.checkerboard], merge: true)
+        let rPieces = self.checkCB(index1: index1, index2: index2, playerPieceNum: playerPieceNum, isSkip: isSkip)
+        for rp in rPieces {
+            if rp != (-1, -1) {
+                self.myGameData.rotateDegree[String(rp.0)]![rp.1] += 360.0
+            }
+        }
+        //全部更新完再一次上傳避免動畫延遲
+        self.db.collection("gaming_room").document(self.myGameData.roomData.id ?? "").setData(["rotateDegree": self.myGameData.rotateDegree], merge: true)
+        self.db.collection("gaming_room").document(self.myGameData.roomData.id ?? "").setData(["checkerboard": self.myGameData.checkerboard], merge: true)
     }
     
     //確認有沒有可以下的地方(有0是true，沒有則false)
@@ -117,7 +173,7 @@ class MyGame: ObservableObject {
         return false
     }
     
-    func checkCB(index1: Int, index2: Int, playerPieceNum: Int, isSkip: Bool) -> Void {
+    func checkCB(index1: Int, index2: Int, playerPieceNum: Int, isSkip: Bool) -> [(Int, Int)] {
         //不是1就是2
         let enemyPieceNum = 3 - playerPieceNum
         //確認八方位
@@ -135,6 +191,7 @@ class MyGame: ObservableObject {
         }
         
         //棋子翻面(被跳過的不須執行)
+        var rotatePieces = [(-1, -1)]
         if isSkip == false {
             for c in checkRound {
                 //超出棋盤範圍或不是敵人棋子都不用確認
@@ -162,6 +219,7 @@ class MyGame: ObservableObject {
                                     break
                                 } else {
                                     self.myGameData.checkerboard[String(index1 - temp)]![index2 - temp] = playerPieceNum
+                                    rotatePieces.append((index1 - temp, index2 - temp))
                                     temp = temp + 1
                                 }
                             }
@@ -187,6 +245,7 @@ class MyGame: ObservableObject {
                                     break
                                 } else {
                                     self.myGameData.checkerboard[String(index1 - temp)]![index2] = playerPieceNum
+                                    rotatePieces.append((index1 - temp, index2))
                                     temp = temp + 1
                                 }
                             }
@@ -212,6 +271,7 @@ class MyGame: ObservableObject {
                                     break
                                 } else {
                                     self.myGameData.checkerboard[String(index1 - temp)]![index2 + temp] = playerPieceNum
+                                    rotatePieces.append((index1 - temp, index2 + temp))
                                     temp = temp + 1
                                 }
                             }
@@ -237,6 +297,7 @@ class MyGame: ObservableObject {
                                     break
                                 } else {
                                     self.myGameData.checkerboard[String(index1)]![index2 - temp] = playerPieceNum
+                                    rotatePieces.append((index1, index2 - temp))
                                     temp = temp + 1
                                 }
                             }
@@ -262,6 +323,7 @@ class MyGame: ObservableObject {
                                     break
                                 } else {
                                     self.myGameData.checkerboard[String(index1)]![index2 + temp] = playerPieceNum
+                                    rotatePieces.append((index1, index2 + temp))
                                     temp = temp + 1
                                 }
                             }
@@ -287,6 +349,7 @@ class MyGame: ObservableObject {
                                     break
                                 } else {
                                     self.myGameData.checkerboard[String(index1 + temp)]![index2 - temp] = playerPieceNum
+                                    rotatePieces.append((index1 + temp, index2 - temp))
                                     temp = temp + 1
                                 }
                             }
@@ -313,6 +376,7 @@ class MyGame: ObservableObject {
                                     break
                                 } else {
                                     self.myGameData.checkerboard[String(index1 + temp)]![index2] = playerPieceNum
+                                    rotatePieces.append((index1 + temp, index2))
                                     temp = temp + 1
                                 }
                             }
@@ -339,6 +403,7 @@ class MyGame: ObservableObject {
                                     break
                                 } else {
                                     self.myGameData.checkerboard[String(index1 + temp)]![index2 + temp] = playerPieceNum
+                                    rotatePieces.append((index1 + temp, index2 + temp))
                                     temp = temp + 1
                                 }
                             }
@@ -484,6 +549,7 @@ class MyGame: ObservableObject {
                 }
             }
         }
+        return rotatePieces
     }
 }
 
@@ -491,8 +557,11 @@ struct GameData: Codable, Identifiable {
     @DocumentID var id: String?
     var roomData: RoomData
     var nowPlayer: Int
-    var user0Skipped: Bool
-    var user1Skipped: Bool
+    var user0Skipped: Bool = false
+    var user1Skipped: Bool = false
+    var user0GiveUp: Bool = false
+    var user1GiveUp: Bool = false
+    //-1代表不能下 0代表當前player可下位置 1代表Player1的棋子 2代表Player2的棋子
     var checkerboard = ["0": [-1, -1, -1, -1, -1, -1, -1, -1],
                         "1": [-1, -1, -1, -1, -1, -1, -1, -1],
                         "2": [-1, -1, -1,  0, -1, -1, -1, -1],
@@ -501,5 +570,13 @@ struct GameData: Codable, Identifiable {
                         "5": [-1, -1, -1, -1,  0, -1, -1, -1],
                         "6": [-1, -1, -1, -1, -1, -1, -1, -1],
                         "7": [-1, -1, -1, -1, -1, -1, -1, -1]]
-    //-1代表不能下 0代表當前player可下位置 1代表Player1的棋子 2代表Player2的棋子
+    var rotateDegree = ["0": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        "1": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        "2": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        "3": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        "4": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        "5": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        "6": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        "7": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
+    
 }

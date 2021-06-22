@@ -77,24 +77,24 @@ struct RegisterView: View {
                 Button(action:{
                     if userEmail != "" && userPW != ""{
                         if userPW != userCPW {
-                            showAlertMsg(msg: "兩次密碼不一致")
+                            showAlertMsg(msg: NSLocalizedString("兩次密碼不一致", comment: ""))
                         } else {
                             FireBase.shared.createUser(userEmail: userEmail, pw: userPW) {
                                 (result) in
                                 switch result {
                                 case .success( _):
-                                    showAlertMsg(msg: "註冊成功")
+                                    showAlertMsg(msg: NSLocalizedString("註冊成功", comment: ""))
                                 case .failure(let errormsg):
                                     print("註冊失敗")
                                     switch errormsg {
                                     case .emailFormat:
-                                        showAlertMsg(msg: "電子郵件格式不正確")
+                                        showAlertMsg(msg: NSLocalizedString("電子郵件格式不正確", comment: ""))
                                     case .emailUsed:
-                                        showAlertMsg(msg: "電子郵件已被註冊")
+                                        showAlertMsg(msg: NSLocalizedString("電子郵件已被註冊", comment: ""))
                                     case .pwtooShort:
-                                        showAlertMsg(msg: "密碼長度需至少大於6")
+                                        showAlertMsg(msg: NSLocalizedString("密碼長度需至少大於6", comment: ""))
                                     case .others:
-                                        showAlertMsg(msg: "不明原因錯誤，請重新註冊")
+                                        showAlertMsg(msg: NSLocalizedString("不明原因錯誤，請重新註冊", comment: ""))
                                     }
                                     break
                                 }
@@ -102,10 +102,10 @@ struct RegisterView: View {
                         }
                     }
                     else {
-                        showAlertMsg(msg: "帳號或密碼不得為空")
+                        showAlertMsg(msg: NSLocalizedString("帳號或密碼不得為空", comment: ""))
                     }
                 }){
-                    ButtonView(buttonText: "送出")
+                    ButtonView(buttonText: NSLocalizedString("送出", comment: ""))
                 }.alert(isPresented: $showAlert) { () -> Alert in
                     return myAlert
                 }
@@ -120,7 +120,7 @@ struct RegisterView: View {
             FirstLoginView(userEmail: userEmail, userPW: userPW)
         })
         .padding()
-        .navigationTitle("註冊")
+        .navigationTitle(NSLocalizedString("註冊", comment: ""))
         .navigationBarBackButtonHidden(true)
         .navigationBarItems(leading: Button(action:{self.presentationMode.wrappedValue.dismiss()}){
             HStack {
@@ -136,18 +136,18 @@ struct RegisterView: View {
     func go2FirstLoginView() -> Void {
         print(Auth.auth().currentUser!.uid)
         self.presentationMode.wrappedValue.dismiss()
-        self.showFLView = true
+        //self.showFLView = true
     }
     
     func showAlertMsg(msg: String) -> Void {
         self.alertMsg = msg
-        if alertMsg == "註冊成功" {
-            self.myAlert = Alert(title: Text("成功"), message: Text(alertMsg), dismissButton: .cancel(Text("前往設置個人資料"), action:go2FirstLoginView))
+        if alertMsg == NSLocalizedString("註冊成功", comment: "") {
+            self.myAlert = Alert(title: Text(NSLocalizedString("成功", comment: "")), message: Text(alertMsg), dismissButton: .cancel(Text(NSLocalizedString("前往設置個人資料", comment: "")), action:go2FirstLoginView))
             //
             self.showAlert = true
         }
         else {
-            self.myAlert = Alert(title: Text("錯誤"), message: Text(alertMsg), dismissButton: .cancel(Text("重新輸入")))
+            self.myAlert = Alert(title: Text(NSLocalizedString("錯誤", comment: "")), message: Text(alertMsg), dismissButton: .cancel(Text(NSLocalizedString("重新輸入", comment: ""))))
             self.showAlert = true
         }
     }

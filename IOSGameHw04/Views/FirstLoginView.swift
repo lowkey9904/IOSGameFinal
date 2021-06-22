@@ -170,7 +170,8 @@ struct FirstLoginView: View {
                     HStack{
                         Button(action:{
                             if userDisplayName == "" {
-                                alertMsg = "暱稱不得為空"
+                                alertMsg = NSLocalizedString("暱稱不得為空", comment: "")
+                                self.myAlert = Alert(title: Text("錯誤"), message: Text(alertMsg), dismissButton: .default(Text("好")))
                                 showAlert = true
                             }
                             else{
@@ -209,6 +210,7 @@ struct FirstLoginView: View {
             .onAppear{
                 myDateFormatter.dateFormat = "y MMM dd"
                 flgFormatter.dateFormat = "y MMM dd HH:mm"
+                self.customSegmentListStyle()
                 //記錄第一次登入時間
                 self.userFirstLoginStr = flgFormatter.string(from: currentDate)
             }
@@ -224,7 +226,7 @@ struct FirstLoginView: View {
     
     func showAlertMsg(msg: String) -> Void {
         self.alertMsg = msg
-        if alertMsg == "設置基本資料成功" {
+        if alertMsg == NSLocalizedString("設置基本資料成功", comment: "") {
             self.myAlert = Alert(title: Text("成功"), message: Text(alertMsg), dismissButton: .default(Text("請重新登入"), action: {
                 //FireBase.shared.userSingOut()
                 self.presentationMode.wrappedValue.dismiss()}))
@@ -253,17 +255,17 @@ struct FirstLoginView: View {
                     switch result {
                     case .success(let msg):
                         print(msg)
-                        let newUser = UserData(userName: userDisplayName, userPhotoURL: url.absoluteString, userGender: gender[genderSelect], userBD: myDateFormatter.string(from: userBD), userFirstLogin: userFirstLoginStr, userCountry: countries[userCountrySelect])
+                        let newUser = UserData(userID: myUserData.currentUser?.uid, userName: userDisplayName, userPhotoURL: url.absoluteString, userGender: gender[genderSelect], userBD: myDateFormatter.string(from: userBD), userFirstLogin: userFirstLoginStr, userCountry: countries[userCountrySelect])
                         FireBase.shared.createUserData(ud: newUser, uid: myUserData.currentUser!.uid) {
                             (result) in
                             switch result {
                             case .success(let sucmsg):
                                 print(sucmsg)
                                 FireBase.shared.userSingOut()
-                                showAlertMsg(msg: "設置基本資料成功")
+                                showAlertMsg(msg: NSLocalizedString("設置基本資料成功", comment: ""))
                             case .failure(_):
                                 print("上傳錯誤")
-                                showAlertMsg(msg: "發生不明錯誤，請重新嘗試")
+                                showAlertMsg(msg: NSLocalizedString("發生不明錯誤，請稍後再試", comment: ""))
                             }
                         }
                     case .failure(_):
@@ -275,11 +277,20 @@ struct FirstLoginView: View {
             }
         }
     }
+    
+    private func customSegmentListStyle() {
+        UISegmentedControl.appearance().selectedSegmentTintColor = UIColor(Color.white)
+        UISegmentedControl.appearance().backgroundColor = UIColor(Color.clear)
+        UISegmentedControl.appearance().setTitleTextAttributes([NSAttributedString.Key.foregroundColor:UIColor(Color.primary)], for: .normal)
+        UISegmentedControl.appearance().setTitleTextAttributes([NSAttributedString.Key.foregroundColor:UIColor(Color.black)], for: .selected)
+        UISegmentedControl.appearance().setTitleTextAttributes([.font : UIFont.preferredFont(forTextStyle: .body)], for: .normal)
+    }
 }
 
 struct FirstLoginView_Previews: PreviewProvider {
     static var previews: some View {
         FirstLoginView(userEmail: "", userPW: "")
+            .preferredColorScheme(.dark)
     }
 }
 
